@@ -1,3 +1,4 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -40,3 +41,17 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Theme styles */
+.theme-night {
+  --background: #121212;
+  --foreground: #ffffff;
+  --muted: #333333;
+}
+
+.theme-fun {
+  --background: linear-gradient(to right, #f5f3ff, #fce7f3);
+  --foreground: #6b21a8;
+  --muted: #c4b5fd;
+}
+

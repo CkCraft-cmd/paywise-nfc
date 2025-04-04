@@ -1,19 +1,31 @@
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, SmartphoneNfc } from "lucide-react";
+import { ShieldCheck, SmartphoneNfc, Edit2 } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/input";
 
 type ScanStatus = "idle" | "scanning" | "success" | "error";
 
 interface NFCScannerProps {
-  onScanComplete?: (cardId: string) => void;
+  onScanComplete?: (cardId: string, customAmount?: number, customMerchant?: string) => void;
   autoStart?: boolean;
+  enableCustomOptions?: boolean;
 }
 
-const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
+const NFCScanner = ({ 
+  onScanComplete, 
+  autoStart = false, 
+  enableCustomOptions = false 
+}: NFCScannerProps) => {
   const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [scanProgress, setScanProgress] = useState(0);
   const [hasNfc, setHasNfc] = useState<boolean | null>(null);
+  const [showCustomOptions, setShowCustomOptions] = useState(false);
+  const [customAmount, setCustomAmount] = useState<number | undefined>(undefined);
+  const [customMerchant, setCustomMerchant] = useState<string | undefined>(undefined);
+  
+  const { theme } = useTheme();
 
   // Simulate NFC availability check
   useEffect(() => {
@@ -79,7 +91,7 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
     toast.success("Card detected successfully!");
     
     if (onScanComplete) {
-      onScanComplete(mockCardId);
+      onScanComplete(mockCardId, customAmount, customMerchant);
     }
     
     // Reset after a delay
@@ -90,27 +102,88 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
   };
 
   const getStatusColors = () => {
-    switch (scanStatus) {
-      case "scanning":
-        return "text-paywise-blue";
-      case "success":
-        return "text-paywise-green";
-      case "error":
-        return "text-paywise-red";
+    switch (theme) {
+      case "night":
+        return scanStatus === "scanning" ? "text-blue-400" :
+               scanStatus === "success" ? "text-green-400" :
+               scanStatus === "error" ? "text-red-400" :
+               "text-gray-500";
+      case "fun":
+        return scanStatus === "scanning" ? "text-purple-400" :
+               scanStatus === "success" ? "text-pink-400" :
+               scanStatus === "error" ? "text-orange-400" :
+               "text-purple-300";
       default:
-        return "text-gray-400";
+        switch (scanStatus) {
+          case "scanning":
+            return "text-paywise-blue";
+          case "success":
+            return "text-paywise-green";
+          case "error":
+            return "text-paywise-red";
+          default:
+            return "text-gray-400";
+        }
     }
   };
 
+  const getBgColors = () => {
+    switch (theme) {
+      case "night":
+        return "bg-gray-800 text-white";
+      case "fun":
+        return "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-900";
+      default:
+        return "bg-white text-black";
+    }
+  };
+
+  const getPulseColors = () => {
+    switch (theme) {
+      case "night":
+        return "bg-blue-900 animate-pulse-soft";
+      case "fun":
+        return "bg-purple-200 animate-pulse-soft";
+      default:
+        return "bg-paywise-lightBlue animate-pulse-soft";
+    }
+  };
+
+  const getProgressColors = () => {
+    switch (theme) {
+      case "night":
+        return {
+          bg: "#1a1a2e", 
+          stroke: "#2563eb" // blue-600
+        };
+      case "fun":
+        return {
+          bg: "#f5d0fe", // purple-200
+          stroke: "#a855f7" // purple-500
+        };
+      default:
+        return {
+          bg: "#E8EFFF",
+          stroke: "#3366FF"
+        };
+    }
+  };
+
+  const progressColors = getProgressColors();
+
+  const toggleCustomOptions = () => {
+    setShowCustomOptions(!showCustomOptions);
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center p-6 rounded-xl bg-white shadow-sm">
+    <div className={`flex flex-col items-center justify-center p-6 rounded-xl shadow-sm ${getBgColors()}`}>
       <div 
         className={`relative flex items-center justify-center w-24 h-24 rounded-full mb-4 transition-all duration-300 ${
-          scanStatus === "scanning" ? "bg-paywise-lightBlue animate-pulse-soft" : "bg-gray-100"
+          scanStatus === "scanning" ? getPulseColors() : theme === "night" ? "bg-gray-700" : theme === "fun" ? "bg-purple-100" : "bg-gray-100"
         }`}
       >
         {scanStatus === "success" ? (
-          <ShieldCheck size={40} className="text-paywise-green" />
+          <ShieldCheck size={40} className={theme === "night" ? "text-green-400" : theme === "fun" ? "text-pink-500" : "text-paywise-green"} />
         ) : (
           <SmartphoneNfc size={40} className={getStatusColors()} />
         )}
@@ -125,7 +198,7 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
               cy="50"
               r="46"
               fill="none"
-              stroke="#E8EFFF"
+              stroke={progressColors.bg}
               strokeWidth="6"
             />
             <circle
@@ -133,7 +206,7 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
               cy="50"
               r="46"
               fill="none"
-              stroke="#3366FF"
+              stroke={progressColors.stroke}
               strokeWidth="6"
               strokeDasharray="289.27"
               strokeDashoffset={289.27 * (1 - scanProgress / 100)}
@@ -143,7 +216,7 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
         )}
       </div>
       
-      <h3 className="text-lg font-semibold mb-1">
+      <h3 className={`text-lg font-semibold mb-1 ${theme === "night" ? "text-white" : ""}`}>
         {scanStatus === "scanning"
           ? "Scanning..."
           : scanStatus === "success"
@@ -151,7 +224,7 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
           : "Tap to Scan"}
       </h3>
       
-      <p className="text-gray-500 text-sm text-center mb-4">
+      <p className={`text-sm text-center mb-4 ${theme === "night" ? "text-gray-300" : "text-gray-500"}`}>
         {scanStatus === "scanning"
           ? "Hold your student ID card near your device"
           : scanStatus === "success"
@@ -159,10 +232,59 @@ const NFCScanner = ({ onScanComplete, autoStart = false }: NFCScannerProps) => {
           : "Place your student ID card near the back of your phone"}
       </p>
       
+      {enableCustomOptions && scanStatus === "idle" && (
+        <button 
+          onClick={toggleCustomOptions}
+          className={`flex items-center mb-4 text-sm ${
+            theme === "night" ? "text-blue-300" : 
+            theme === "fun" ? "text-purple-600" : 
+            "text-paywise-blue"
+          }`}
+        >
+          <Edit2 size={16} className="mr-1" />
+          {showCustomOptions ? "Hide custom options" : "Set custom options"}
+        </button>
+      )}
+      
+      {showCustomOptions && scanStatus === "idle" && (
+        <div className="w-full space-y-3 mb-4">
+          <div>
+            <label className={`block text-sm mb-1 ${theme === "night" ? "text-gray-300" : "text-gray-600"}`}>
+              Custom Amount (optional)
+            </label>
+            <Input
+              type="number"
+              placeholder="Enter amount"
+              value={customAmount || ""}
+              onChange={(e) => setCustomAmount(e.target.value ? Number(e.target.value) : undefined)}
+              className={theme === "night" ? "bg-gray-700 border-gray-600 text-white" : ""}
+            />
+          </div>
+          <div>
+            <label className={`block text-sm mb-1 ${theme === "night" ? "text-gray-300" : "text-gray-600"}`}>
+              Custom Merchant (optional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Enter merchant name"
+              value={customMerchant || ""}
+              onChange={(e) => setCustomMerchant(e.target.value || undefined)}
+              className={theme === "night" ? "bg-gray-700 border-gray-600 text-white" : ""}
+            />
+          </div>
+        </div>
+      )}
+      
       {scanStatus === "idle" && hasNfc && (
         <button
           onClick={startScan}
-          className="bg-paywise-blue text-white px-6 py-2.5 rounded-lg font-medium"
+          className={`px-6 py-2.5 rounded-lg font-medium ${
+            theme === "night" 
+              ? "bg-blue-600 text-white hover:bg-blue-700" 
+              : theme === "fun"
+                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600"
+                : "bg-paywise-blue text-white"
+          }`}
         >
           Start Scan
         </button>

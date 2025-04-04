@@ -2,37 +2,62 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { addTransaction } from "@/services/transactionService";
 import PageLayout from "@/components/PageLayout";
 import NFCScanner from "@/components/NFCScanner";
 import PaymentForm from "@/components/PaymentForm";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 const Payments = () => {
   const navigate = useNavigate();
   const { user, profile, updateBalance } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [scanComplete, setScanComplete] = useState(false);
   const [cardId, setCardId] = useState("");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(10.99);
   const [merchantName, setMerchantName] = useState("Campus Cafe");
   
-  const handleScanComplete = (detectedCardId: string) => {
+  const handleScanComplete = (
+    detectedCardId: string, 
+    customAmount?: number, 
+    customMerchant?: string
+  ) => {
     setCardId(detectedCardId);
     setScanComplete(true);
     
-    // In a real app, we would fetch merchant details based on the card ID
-    // For now, we'll use mock data
-    const mockMerchants = [
-      { id: "1234", name: "Campus Cafe", amount: 10.99 },
-      { id: "5678", name: "University Bookstore", amount: 25.50 },
-      { id: "9101", name: "Student Union", amount: 15.75 }
-    ];
+    // Use custom values if provided, otherwise use mock data
+    if (customAmount !== undefined) {
+      setPaymentAmount(customAmount);
+    } else {
+      // In a real app, we would fetch merchant details based on the card ID
+      // For now, we'll use mock data
+      const mockMerchants = [
+        { id: "1234", name: "Campus Cafe", amount: 10.99 },
+        { id: "5678", name: "University Bookstore", amount: 25.50 },
+        { id: "9101", name: "Student Union", amount: 15.75 }
+      ];
+      
+      const merchant = mockMerchants.find(m => m.id === detectedCardId.substring(0, 4)) || mockMerchants[0];
+      setPaymentAmount(merchant.amount);
+    }
     
-    const merchant = mockMerchants.find(m => m.id === detectedCardId.substring(0, 4)) || mockMerchants[0];
-    setMerchantName(merchant.name);
-    setPaymentAmount(merchant.amount);
+    if (customMerchant) {
+      setMerchantName(customMerchant);
+    } else {
+      // In a real app, we would fetch merchant details based on the card ID
+      // For now, we'll use mock data
+      const mockMerchants = [
+        { id: "1234", name: "Campus Cafe", amount: 10.99 },
+        { id: "5678", name: "University Bookstore", amount: 25.50 },
+        { id: "9101", name: "Student Union", amount: 15.75 }
+      ];
+      
+      const merchant = mockMerchants.find(m => m.id === detectedCardId.substring(0, 4)) || mockMerchants[0];
+      setMerchantName(merchant.name);
+    }
     
     // Show payment form after a short delay
     setTimeout(() => {
@@ -84,31 +109,86 @@ const Payments = () => {
     setShowPaymentForm(false);
   };
 
+  const toggleTheme = () => {
+    if (theme === "light") setTheme("night");
+    else if (theme === "night") setTheme("fun");
+    else setTheme("light");
+  };
+
+  // Get theme-specific styles
+  const getThemeStyles = () => {
+    switch (theme) {
+      case "night":
+        return {
+          background: "bg-gray-900",
+          text: "text-white",
+          card: "bg-gray-800 border border-gray-700",
+          border: "border-gray-700"
+        };
+      case "fun":
+        return {
+          background: "bg-gradient-to-br from-purple-50 to-pink-50",
+          text: "text-purple-900",
+          card: "bg-white border border-purple-200 shadow-purple-100",
+          border: "border-purple-200"
+        };
+      default:
+        return {
+          background: "bg-white",
+          text: "text-black",
+          card: "bg-white border border-gray-100",
+          border: "border-gray-100"
+        };
+    }
+  };
+
+  const styles = getThemeStyles();
+
   return (
     <PageLayout>
-      <div className="pt-6">
-        <div className="flex items-center mb-6">
-          <button 
-            onClick={() => navigate(-1)}
-            className="mr-3 p-1"
+      <div className={`pt-6 ${styles.background} min-h-screen -mt-6 -mx-4 px-4`}>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <button 
+              onClick={() => navigate(-1)}
+              className={`mr-3 p-1 ${theme === "night" ? "text-white" : ""}`}
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h1 className={`text-xl font-bold ${styles.text}`}>NFC Payment</h1>
+          </div>
+          
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-full ${
+              theme === "night" 
+                ? "bg-gray-800 text-blue-400" 
+                : theme === "fun"
+                  ? "bg-purple-100 text-purple-600"
+                  : "bg-gray-100 text-gray-600"
+            }`}
           >
-            <ArrowLeft size={24} />
+            {theme === "light" && <Moon size={20} />}
+            {theme === "night" && <Zap size={20} />}
+            {theme === "fun" && <Sun size={20} />}
           </button>
-          <h1 className="text-xl font-bold">NFC Payment</h1>
         </div>
         
-        <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+        <div className={`rounded-xl overflow-hidden shadow-sm ${styles.card}`}>
           {!scanComplete && (
             <>
-              <div className="p-4 border-b border-gray-100">
-                <h2 className="font-semibold mb-2">Scan Your Student ID Card</h2>
-                <p className="text-sm text-gray-500">
+              <div className={`p-4 border-b ${styles.border}`}>
+                <h2 className={`font-semibold mb-2 ${styles.text}`}>Scan Your Student ID Card</h2>
+                <p className={`text-sm ${theme === "night" ? "text-gray-400" : "text-gray-500"}`}>
                   Hold your phone near your student ID card to complete your payment
                 </p>
               </div>
               
               <div className="p-4">
-                <NFCScanner onScanComplete={handleScanComplete} />
+                <NFCScanner 
+                  onScanComplete={handleScanComplete} 
+                  enableCustomOptions={true} 
+                />
               </div>
             </>
           )}
@@ -116,12 +196,29 @@ const Payments = () => {
           {scanComplete && !showPaymentForm && (
             <div className="p-4">
               <div className="text-center py-6">
-                <div className="w-16 h-16 bg-paywise-lightBlue rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-paywise-blue font-bold">ID</span>
+                <div className={`w-16 h-16 ${
+                  theme === "night" 
+                    ? "bg-blue-900" 
+                    : theme === "fun" 
+                      ? "bg-purple-200"
+                      : "bg-paywise-lightBlue"
+                  } rounded-full flex items-center justify-center mx-auto mb-4`}
+                >
+                  <span className={`${
+                    theme === "night" 
+                      ? "text-blue-300" 
+                      : theme === "fun" 
+                        ? "text-purple-700"
+                        : "text-paywise-blue"
+                    } font-bold`}>ID</span>
                 </div>
-                <h3 className="text-lg font-semibold mb-1">Card Detected</h3>
-                <p className="text-gray-500 mb-3">Student ID: {cardId}</p>
-                <p className="text-sm text-gray-400">Preparing payment form...</p>
+                <h3 className={`text-lg font-semibold mb-1 ${styles.text}`}>Card Detected</h3>
+                <p className={`${
+                  theme === "night" ? "text-gray-400" : "text-gray-500"
+                } mb-3`}>Student ID: {cardId}</p>
+                <p className={`text-sm ${
+                  theme === "night" ? "text-gray-500" : "text-gray-400"
+                }`}>Preparing payment form...</p>
               </div>
             </div>
           )}
@@ -140,7 +237,13 @@ const Payments = () => {
           <div className="mt-6 text-center">
             <button
               onClick={handleNewScan}
-              className="text-paywise-blue font-medium"
+              className={`font-medium ${
+                theme === "night" 
+                  ? "text-blue-400" 
+                  : theme === "fun" 
+                    ? "text-purple-600"
+                    : "text-paywise-blue"
+              }`}
             >
               Scan a different card
             </button>
