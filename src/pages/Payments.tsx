@@ -1,6 +1,8 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { addTransaction } from "@/services/transactionService";
 import PageLayout from "@/components/PageLayout";
 import NFCScanner from "@/components/NFCScanner";
 import PaymentForm from "@/components/PaymentForm";
@@ -9,13 +11,28 @@ import { toast } from "sonner";
 
 const Payments = () => {
   const navigate = useNavigate();
+  const { user, profile, updateBalance } = useAuth();
   const [scanComplete, setScanComplete] = useState(false);
   const [cardId, setCardId] = useState("");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState(10.99);
+  const [merchantName, setMerchantName] = useState("Campus Cafe");
   
   const handleScanComplete = (detectedCardId: string) => {
     setCardId(detectedCardId);
     setScanComplete(true);
+    
+    // In a real app, we would fetch merchant details based on the card ID
+    // For now, we'll use mock data
+    const mockMerchants = [
+      { id: "1234", name: "Campus Cafe", amount: 10.99 },
+      { id: "5678", name: "University Bookstore", amount: 25.50 },
+      { id: "9101", name: "Student Union", amount: 15.75 }
+    ];
+    
+    const merchant = mockMerchants.find(m => m.id === detectedCardId.substring(0, 4)) || mockMerchants[0];
+    setMerchantName(merchant.name);
+    setPaymentAmount(merchant.amount);
     
     // Show payment form after a short delay
     setTimeout(() => {
@@ -30,14 +47,35 @@ const Payments = () => {
     setShowPaymentForm(false);
   };
   
-  const handlePaymentSuccess = () => {
-    // In a real app, we would process the payment here
-    toast.success("Payment processed successfully!");
+  const handlePaymentSuccess = async () => {
+    if (!user || !profile) return;
     
-    // Navigate back to home after successful payment
-    setTimeout(() => {
-      navigate("/");
-    }, 2000);
+    try {
+      // 1. Update user balance
+      const newBalance = profile.balance - paymentAmount;
+      await updateBalance(newBalance);
+      
+      // 2. Create a transaction record
+      await addTransaction({
+        user_id: user.id,
+        amount: paymentAmount,
+        title: merchantName,
+        location: "Student Union",
+        category: "dining",
+        timestamp: new Date().toISOString(),
+        status: "completed"
+      });
+      
+      toast.success("Payment processed successfully!");
+      
+      // Navigate back to home after successful payment
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+    } catch (error) {
+      console.error("Payment processing error:", error);
+      toast.error("Failed to process payment");
+    }
   };
   
   const handleNewScan = () => {
@@ -90,8 +128,8 @@ const Payments = () => {
           
           {showPaymentForm && (
             <PaymentForm
-              amount={10.99}
-              merchant="Campus Cafe"
+              amount={paymentAmount}
+              merchant={merchantName}
               onCancel={handlePaymentCancel}
               onSuccess={handlePaymentSuccess}
             />

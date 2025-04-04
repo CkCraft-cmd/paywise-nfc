@@ -1,15 +1,24 @@
 
 import { TrendingUp, CreditCard } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import AddMoneyModal from "./AddMoneyModal";
 
 interface BalanceCardProps {
-  balance: number;
   spentToday: number;
-  onAddMoney: (amount: number) => void;
   onScanCard: () => void;
 }
 
-const BalanceCard = ({ balance, spentToday, onAddMoney, onScanCard }: BalanceCardProps) => {
+const BalanceCard = ({ spentToday, onScanCard }: BalanceCardProps) => {
+  const { profile, updateBalance } = useAuth();
+  const balance = profile?.balance || 0;
+
+  const handleAddMoney = async (amount: number) => {
+    if (!profile) return;
+    
+    const newBalance = balance + amount;
+    await updateBalance(newBalance);
+  };
+
   return (
     <div className="relative w-full rounded-xl overflow-hidden shadow-lg mb-6">
       <div className="card-gradient p-5">
@@ -25,7 +34,7 @@ const BalanceCard = ({ balance, spentToday, onAddMoney, onScanCard }: BalanceCar
         </div>
         
         <div className="flex space-x-3">
-          <AddMoneyModal onAddMoney={onAddMoney} />
+          <AddMoneyModal onAddMoney={handleAddMoney} />
           <button 
             onClick={onScanCard}
             className="bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium flex-1 flex items-center justify-center"

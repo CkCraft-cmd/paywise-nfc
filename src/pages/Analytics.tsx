@@ -1,5 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { fetchTransactions } from "@/services/transactionService";
 import PageLayout from "@/components/PageLayout";
 import InsightCard from "@/components/InsightCard";
 import SpendingChart from "@/components/SpendingChart";
@@ -7,64 +9,11 @@ import TransactionItem, { Transaction } from "@/components/TransactionItem";
 import { toast } from "sonner";
 
 const Analytics = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "tx1",
-      amount: 8.50,
-      title: "Campus Cafe",
-      location: "Student Union",
-      category: "dining",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      status: "completed"
-    },
-    {
-      id: "tx2",
-      amount: 27.99,
-      title: "University Bookstore",
-      location: "Main Campus",
-      category: "books",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 hours ago
-      status: "completed"
-    },
-    {
-      id: "tx3",
-      amount: 10.00,
-      title: "Monthly Plan",
-      location: "PayWise Services",
-      category: "payment",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      status: "completed"
-    },
-    {
-      id: "tx4",
-      amount: 15.75,
-      title: "Campus Market",
-      location: "East Residence",
-      category: "shopping",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
-      status: "completed"
-    },
-    {
-      id: "tx5",
-      amount: 5.25,
-      title: "University Printing",
-      location: "Library",
-      category: "other",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
-      status: "completed"
-    },
-    {
-      id: "tx6",
-      amount: 12.50,
-      title: "Campus Cafe",
-      location: "Student Union",
-      category: "dining",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4), // 4 days ago
-      status: "completed"
-    }
-  ]);
-
-  // Sample data for spending charts
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Sample data for spending charts - in a real app these would be calculated from transactions
   const weeklyData = [
     { name: "Mon", value: 22.5 },
     { name: "Tue", value: 15.75 },
@@ -97,9 +46,46 @@ const Analytics = () => {
     { name: "Dec", value: 550 },
   ];
 
+  useEffect(() => {
+    if (!user) return;
+    
+    const loadTransactions = async () => {
+      try {
+        setIsLoading(true);
+        const fetchedTransactions = await fetchTransactions(user.id);
+        
+        // Convert timestamp strings to Date objects for proper formatting
+        const formattedTransactions = fetchedTransactions.map(tx => ({
+          ...tx,
+          timestamp: new Date(tx.timestamp)
+        }));
+        
+        setTransactions(formattedTransactions);
+      } catch (error) {
+        console.error("Error loading transactions:", error);
+        toast.error("Failed to load transaction history");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTransactions();
+  }, [user]);
+
   const handleViewTransaction = (id: string) => {
     toast.info(`Viewing transaction ${id}`);
   };
+
+  // Calculate analytics totals
+  const monthlySpending = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const transactionCount = transactions.length;
+  const avgTransaction = transactionCount > 0 ? monthlySpending / transactionCount : 0;
+  
+  // Calculate dining percentage
+  const diningTransactions = transactions.filter(tx => tx.category === "dining");
+  const diningPercentage = transactions.length > 0 
+    ? (diningTransactions.length / transactions.length) * 100 
+    : 0;
 
   return (
     <PageLayout>
@@ -109,28 +95,28 @@ const Analytics = () => {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <InsightCard
             title="Monthly Spending"
-            value={285.75}
+            value={monthlySpending}
             change={-12.5}
             timeFrame="last month"
             description="Total amount spent this month across all categories."
           />
           <InsightCard
             title="Transactions"
-            value={16}
+            value={transactionCount}
             change={8.3}
             timeFrame="last month"
             description="Total number of transactions completed this month."
           />
           <InsightCard
             title="Avg. Transaction"
-            value={17.86}
+            value={avgTransaction}
             change={-5.2}
             timeFrame="last month"
             description="Average amount spent per transaction this month."
           />
           <InsightCard
             title="Dining Expenses"
-            value="42%"
+            value={`${diningPercentage.toFixed(0)}%`}
             change={3.8}
             timeFrame="last month"
             description="Percentage of total spending at campus dining venues."
@@ -148,13 +134,23 @@ const Analytics = () => {
         <div className="mb-6">
           <h2 className="font-semibold mb-3">Transaction History</h2>
           <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-            {transactions.map((transaction) => (
-              <TransactionItem
-                key={transaction.id}
-                transaction={transaction}
-                onClick={() => handleViewTransaction(transaction.id)}
-              />
-            ))}
+            {isLoading ? (
+              <div className="p-6 flex justify-center">
+                <div className="animate-spin h-6 w-6 border-2 border-paywise-blue border-t-transparent rounded-full"></div>
+              </div>
+            ) : transactions.length > 0 ? (
+              transactions.map((transaction) => (
+                <TransactionItem
+                  key={transaction.id}
+                  transaction={transaction}
+                  onClick={() => handleViewTransaction(transaction.id)}
+                />
+              ))
+            ) : (
+              <div className="p-6 text-center text-gray-500">
+                <p>No transaction history available</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
