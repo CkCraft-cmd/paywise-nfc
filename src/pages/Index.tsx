@@ -59,8 +59,11 @@ const Index = () => {
     setRecentTransactions(mockTransactions);
   }, []);
 
-  const handleAddMoney = () => {
-    toast.info("Add money feature coming soon!");
+  const handleAddMoney = (amount: number) => {
+    setBalance(prevBalance => {
+      const newBalance = prevBalance + amount;
+      return parseFloat(newBalance.toFixed(2));
+    });
   };
   
   const handleScanCard = () => {
