@@ -3,15 +3,16 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type Props = {
   onToggleForm: () => void;
 };
 
 const LoginForm = ({ onToggleForm }: Props) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('demo@paywise.edu');
+  const [password, setPassword] = useState('demo');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
 
@@ -31,6 +32,13 @@ const LoginForm = ({ onToggleForm }: Props) => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 text-center">Login to PayWise</h2>
+      
+      <Alert className="mb-4 bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-sm text-blue-700">
+          Use demo credentials (already filled in) to sign in without a Supabase connection.
+        </AlertDescription>
+      </Alert>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

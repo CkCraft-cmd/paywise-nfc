@@ -3,16 +3,17 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type Props = {
   onToggleForm: () => void;
 };
 
 const SignupForm = ({ onToggleForm }: Props) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('demo@paywise.edu');
+  const [password, setPassword] = useState('demo');
+  const [fullName, setFullName] = useState('Demo User');
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
 
@@ -32,6 +33,13 @@ const SignupForm = ({ onToggleForm }: Props) => {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-6 text-center">Create Your Account</h2>
+      
+      <Alert className="mb-4 bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-sm text-blue-700">
+          Use demo credentials (already filled in) to create an account without a Supabase connection.
+        </AlertDescription>
+      </Alert>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -73,9 +81,9 @@ const SignupForm = ({ onToggleForm }: Props) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
-            minLength={6}
+            minLength={4}
           />
-          <p className="text-xs text-gray-500">Password must be at least 6 characters</p>
+          <p className="text-xs text-gray-500">Password must be at least 4 characters</p>
         </div>
         
         <Button
