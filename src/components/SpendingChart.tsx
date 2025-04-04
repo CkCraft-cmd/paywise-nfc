@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -38,7 +37,7 @@ const SpendingChart = ({ weeklyData, monthlyData, yearlyData }: SpendingChartPro
       return (
         <div className="bg-white p-2 shadow-md rounded-md border border-gray-100">
           <p className="font-medium">{payload[0].payload.name}</p>
-          <p className="text-paywise-blue">${payload[0].value.toFixed(2)}</p>
+          <p className="text-paywise-blue">₹{payload[0].value.toLocaleString('en-IN')}</p>
         </div>
       );
     }

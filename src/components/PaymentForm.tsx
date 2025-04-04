@@ -45,7 +45,7 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
         </div>
         <h3 className="text-xl font-bold mb-1">Payment Successful!</h3>
         <p className="text-gray-500 text-center mb-4">
-          Your payment of ${amount.toFixed(2)} to {merchant} has been processed successfully.
+          Your payment of ₹{amount.toLocaleString('en-IN')} to {merchant} has been processed successfully.
         </p>
       </div>
     );
@@ -58,7 +58,7 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
       <div className="bg-gray-50 p-4 rounded-lg mb-6">
         <div className="flex justify-between mb-2">
           <span className="text-gray-500">Amount</span>
-          <span className="font-bold">${amount.toFixed(2)}</span>
+          <span className="font-bold">₹{amount.toLocaleString('en-IN')}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Merchant</span>

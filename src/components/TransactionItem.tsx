@@ -81,7 +81,7 @@ const TransactionItem = ({ transaction, onClick }: TransactionItemProps) => {
             <p className="text-xs text-gray-500">{location} • {formattedTime}</p>
           </div>
           <div className="text-right">
-            <p className="font-semibold">${amount.toFixed(2)}</p>
+            <p className="font-semibold">₹{amount.toLocaleString('en-IN')}</p>
             <p className={`text-xs ${getStatusColor()}`}>{status === "completed" ? "Completed" : status === "pending" ? "Pending" : "Failed"}</p>
           </div>
         </div>

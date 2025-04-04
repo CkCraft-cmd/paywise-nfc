@@ -16,11 +16,11 @@ const BalanceCard = ({ balance, spentToday, onAddMoney, onScanCard }: BalanceCar
         <div className="flex justify-between items-start mb-12">
           <div>
             <p className="text-sm font-medium text-white/80 mb-1">Current Balance</p>
-            <h3 className="text-3xl font-bold">${balance.toFixed(2)}</h3>
+            <h3 className="text-3xl font-bold">₹{balance.toLocaleString('en-IN')}</h3>
           </div>
           <div className="flex items-center bg-white/20 rounded-lg px-2 py-1">
             <TrendingUp size={14} className="mr-1" />
-            <span className="text-xs font-medium">${spentToday.toFixed(2)} today</span>
+            <span className="text-xs font-medium">₹{spentToday.toLocaleString('en-IN')} today</span>
           </div>
         </div>
         

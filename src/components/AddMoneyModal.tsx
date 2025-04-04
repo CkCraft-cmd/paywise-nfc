@@ -22,12 +22,12 @@ const AddMoneyModal = ({ onAddMoney }: AddMoneyModalProps) => {
     }
     
     onAddMoney(numAmount);
-    toast.success(`$${numAmount.toFixed(2)} added to your account`);
+    toast.success(`₹${numAmount.toLocaleString('en-IN')} added to your account`);
     setAmount("");
     setIsOpen(false);
   };
 
-  const predefinedAmounts = [10, 20, 50, 100];
+  const predefinedAmounts = [500, 1000, 2000, 5000];
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -58,7 +58,7 @@ const AddMoneyModal = ({ onAddMoney }: AddMoneyModalProps) => {
               Enter Amount
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
               <Input
                 id="amount"
                 type="number"
@@ -80,7 +80,7 @@ const AddMoneyModal = ({ onAddMoney }: AddMoneyModalProps) => {
                 className="w-full"
                 onClick={() => setAmount(presetAmount.toString())}
               >
-                ${presetAmount}
+                ₹{presetAmount}
               </Button>
             ))}
           </div>
