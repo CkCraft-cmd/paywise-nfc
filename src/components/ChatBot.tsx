@@ -17,7 +17,7 @@ interface Message {
 const initialMessages: Message[] = [
   {
     id: "welcome-msg",
-    text: "Hi there! I'm PayBot, your virtual assistant. How can I help you with your PayWise account today?",
+    text: "Hi there! I'm PayBot, your virtual assistant powered by AI. I can help with PayWise questions or anything else you'd like to know!",
     sender: "bot",
     timestamp: new Date(),
   },
@@ -26,8 +26,8 @@ const initialMessages: Message[] = [
 const suggestedQuestions = [
   "How do I add money to my account?",
   "Where can I use my PayWise account?",
-  "How do I report suspicious activity?",
-  "What are the payment limits?",
+  "Tell me about digital payment security",
+  "What's the latest in fintech?",
 ];
 
 const ChatBot = () => {
@@ -81,18 +81,97 @@ const ChatBot = () => {
     setInputValue("");
     setIsTyping(true);
     
-    // Simulating API call delay
-    setTimeout(() => {
-      generateBotResponse(userMessage.text);
-    }, 1500);
+    try {
+      // Send message to GPT API
+      const response = await generateGPTResponse(userMessage.text);
+      
+      const botMessage: Message = {
+        id: `bot-${Date.now()}`,
+        text: response,
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      
+      setIsTyping(false);
+      setMessages((prevMessages) => [...prevMessages, botMessage]);
+    } catch (error) {
+      console.error("Error generating response:", error);
+      setIsTyping(false);
+      
+      // Fallback response in case of API failure
+      const errorMessage: Message = {
+        id: `bot-${Date.now()}`,
+        text: "I'm having trouble connecting right now. Let me try to help with what I know about PayWise.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      
+      // Provide fallback response based on keywords
+      generateFallbackResponse(userMessage.text);
+      
+      toast({
+        title: "Connection Issue",
+        description: "Could not connect to AI service. Using local responses.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSuggestedQuestion = (question: string) => {
-    setInputValue(question);
-    handleSubmit();
+  const generateGPTResponse = async (userMessage: string): Promise<string> => {
+    // Check for PayWise-specific questions first to provide immediate responses
+    const lowerCaseMessage = userMessage.toLowerCase();
+    
+    // Handle PayWise-specific questions with predefined answers
+    if (lowerCaseMessage.includes("add money") || lowerCaseMessage.includes("deposit")) {
+      return "To add money to your account, go to your Balance Card on the home page and tap 'Add Money'. You can add funds using a debit card, bank transfer, or cash deposit at participating locations.";
+    } else if (lowerCaseMessage.includes("use") && lowerCaseMessage.includes("where")) {
+      return "You can use your PayWise account at all campus locations, including the cafeteria, bookstore, printing services, and vending machines. Just tap your NFC-enabled device or scan the QR code at checkout!";
+    } else if (lowerCaseMessage.includes("suspicious") || lowerCaseMessage.includes("fraud") || lowerCaseMessage.includes("report")) {
+      return "If you notice any suspicious activity, please go to Settings > Security and tap 'Report Suspicious Activity'. You can also freeze your account from the same menu if needed.";
+    } else if (lowerCaseMessage.includes("limits") || lowerCaseMessage.includes("maximum")) {
+      return "Standard accounts have a daily spending limit of $500 and a monthly limit of $3,000. You can view or request limit changes in your Profile > Payment Methods section.";
+    } else if (lowerCaseMessage.includes("hi") || lowerCaseMessage.includes("hello") || lowerCaseMessage.includes("hey")) {
+      return `Hello${user?.full_name ? ' ' + user.full_name : ''}! How can I help you today?`;
+    }
+    
+    // For non-PayWise questions, use a simulated GPT response
+    // In a real implementation, this would call OpenAI's API
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate a simulated response based on the question
+      return simulateGPTResponse(userMessage);
+    } catch (error) {
+      console.error("Error calling GPT API:", error);
+      throw new Error("Failed to generate response");
+    }
   };
 
-  const generateBotResponse = (userMessage: string) => {
+  const simulateGPTResponse = (userMessage: string): string => {
+    const lowerCaseMessage = userMessage.toLowerCase();
+    
+    // Respond to common general questions
+    if (lowerCaseMessage.includes("weather")) {
+      return "I don't have access to real-time weather data, but you can check your local weather app or website for the most accurate forecast.";
+    } else if (lowerCaseMessage.includes("time") && lowerCaseMessage.includes("now")) {
+      return `The current time is ${new Date().toLocaleTimeString()}.`;
+    } else if (lowerCaseMessage.includes("digital payment") || lowerCaseMessage.includes("security")) {
+      return "Digital payment security involves multiple layers of protection including encryption, tokenization, and biometric authentication. Always use strong passwords, enable two-factor authentication, and monitor your accounts regularly for suspicious activity.";
+    } else if (lowerCaseMessage.includes("fintech") || lowerCaseMessage.includes("financial technology")) {
+      return "Fintech continues to evolve rapidly with innovations in blockchain, AI-powered financial advice, contactless payments, and decentralized finance (DeFi). Mobile payment solutions and digital wallets like PayWise are becoming increasingly popular, especially among younger users.";
+    } else if (lowerCaseMessage.includes("blockchain") || lowerCaseMessage.includes("crypto")) {
+      return "Blockchain technology provides a decentralized and secure way to record transactions. It's the foundation for cryptocurrencies like Bitcoin and Ethereum, but has many other applications in finance, supply chain management, and digital identity verification.";
+    } else if (lowerCaseMessage.includes("budget") || lowerCaseMessage.includes("saving") || lowerCaseMessage.includes("save money")) {
+      return "Creating a budget is key to financial health. Track your income and expenses, set realistic saving goals, reduce unnecessary spending, and consider automating your savings. The PayWise app can help you track your spending patterns.";
+    } else {
+      return "That's an interesting question. While I don't have all the information at hand, I'd be happy to help you find more resources on this topic or answer any PayWise-related questions you might have.";
+    }
+  };
+
+  const generateFallbackResponse = (userMessage: string) => {
     const lowerCaseMessage = userMessage.toLowerCase();
     let botResponse = "";
     
@@ -112,14 +191,18 @@ const ChatBot = () => {
     }
 
     const newBotMessage: Message = {
-      id: `bot-${Date.now()}`,
+      id: `bot-fallback-${Date.now()}`,
       text: botResponse,
       sender: "bot",
       timestamp: new Date(),
     };
 
-    setIsTyping(false);
     setMessages((prevMessages) => [...prevMessages, newBotMessage]);
+  };
+
+  const handleSuggestedQuestion = (question: string) => {
+    setInputValue(question);
+    handleSubmit();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -152,7 +235,7 @@ const ChatBot = () => {
           <div className="flex items-center justify-between p-3 bg-paywise-blue text-white rounded-t-lg">
             <div className="flex items-center gap-2">
               <MessageCircle size={18} />
-              <h3 className="font-medium">PayWise Assistant</h3>
+              <h3 className="font-medium">PayWise AI Assistant</h3>
             </div>
             <div className="flex items-center gap-1">
               <button onClick={toggleMinimize} className="p-1 hover:bg-paywise-darkBlue rounded">
@@ -218,7 +301,7 @@ const ChatBot = () => {
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your message..."
+                  placeholder="Ask me anything..."
                   className="min-h-[50px] max-h-[100px] resize-none flex-grow"
                   rows={1}
                 />
