@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import ChatBot from "@/components/ChatBot";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Payments from "./pages/Payments";
@@ -75,6 +76,15 @@ const App = () => (
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
+            </Routes>
+            {/* Render ChatBot on all routes except auth */}
+            <Routes>
+              <Route path="/auth" element={null} />
+              <Route path="*" element={
+                <ProtectedRoute>
+                  <ChatBot />
+                </ProtectedRoute>
+              } />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
