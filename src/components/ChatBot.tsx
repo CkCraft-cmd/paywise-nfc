@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, SendHorizontal, X, Minimize2, Maximize2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { fetchChatHistory, saveMessage, clearChatHistory, ChatMessage } from "@/services/chatService";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -36,7 +36,6 @@ const ChatBot = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Load chat history when component mounts and user is available
   useEffect(() => {
     if (user?.id) {
       loadChatHistory();
@@ -129,10 +128,8 @@ const ChatBot = () => {
     setIsTyping(true);
     
     try {
-      // Save user message to database
       await saveMessage(userMessage, useTestMode);
       
-      // Send message to GPT API
       const response = await generateGPTResponse(userMessage.text);
       
       const botMessage: ChatMessage = {
@@ -143,7 +140,6 @@ const ChatBot = () => {
         timestamp: new Date().toISOString(),
       };
       
-      // Save bot response to database
       await saveMessage(botMessage, useTestMode);
       
       setIsTyping(false);
@@ -152,7 +148,6 @@ const ChatBot = () => {
       console.error("Error generating response:", error);
       setIsTyping(false);
       
-      // Fallback response in case of API failure
       const errorMessage: ChatMessage = {
         id: `bot-${Date.now()}`,
         user_id: user.id,
@@ -161,12 +156,10 @@ const ChatBot = () => {
         timestamp: new Date().toISOString(),
       };
       
-      // Save error message to database
       await saveMessage(errorMessage, useTestMode);
       
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
       
-      // Provide fallback response based on keywords
       generateFallbackResponse(userMessage.text);
       
       toast({
@@ -178,10 +171,8 @@ const ChatBot = () => {
   };
 
   const generateGPTResponse = async (userMessage: string): Promise<string> => {
-    // Check for PayWise-specific questions first to provide immediate responses
     const lowerCaseMessage = userMessage.toLowerCase();
     
-    // Handle PayWise-specific questions with predefined answers
     if (lowerCaseMessage.includes("add money") || lowerCaseMessage.includes("deposit")) {
       return "To add money to your account, go to your Balance Card on the home page and tap 'Add Money'. You can add funds using a debit card, bank transfer, or cash deposit at participating locations.";
     } else if (lowerCaseMessage.includes("use") && lowerCaseMessage.includes("where")) {
@@ -194,10 +185,7 @@ const ChatBot = () => {
       return `Hello${user?.full_name ? ' ' + user.full_name : ''}! How can I help you today?`;
     }
     
-    // For non-PayWise questions, use a simulated GPT response
     try {
-      // Try connecting to Supabase for an AI response
-      // This would ideally be connected to a Supabase Edge Function that calls OpenAI
       if (!useTestMode) {
         try {
           const { data, error } = await supabase.functions.invoke("chat-gpt", {
@@ -219,10 +207,8 @@ const ChatBot = () => {
         }
       }
       
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Generate a simulated response based on the question
       return simulateGPTResponse(userMessage);
     } catch (error) {
       console.error("Error calling GPT API:", error);
@@ -233,7 +219,6 @@ const ChatBot = () => {
   const simulateGPTResponse = (userMessage: string): string => {
     const lowerCaseMessage = userMessage.toLowerCase();
     
-    // Respond to common general questions
     if (lowerCaseMessage.includes("weather")) {
       return "I don't have access to real-time weather data, but you can check your local weather app or website for the most accurate forecast.";
     } else if (lowerCaseMessage.includes("time") && lowerCaseMessage.includes("now")) {
@@ -255,7 +240,6 @@ const ChatBot = () => {
     const lowerCaseMessage = userMessage.toLowerCase();
     let botResponse = "";
     
-    // Simple response logic based on keywords
     if (lowerCaseMessage.includes("add money") || lowerCaseMessage.includes("deposit")) {
       botResponse = "To add money to your account, go to your Balance Card on the home page and tap 'Add Money'. You can add funds using a debit card, bank transfer, or cash deposit at participating locations.";
     } else if (lowerCaseMessage.includes("use") || lowerCaseMessage.includes("where")) {
@@ -278,7 +262,6 @@ const ChatBot = () => {
       timestamp: new Date().toISOString(),
     };
 
-    // Don't save fallback messages to database since we already have an error message
     setMessages((prevMessages) => [...prevMessages, newBotMessage]);
   };
 
@@ -298,7 +281,6 @@ const ChatBot = () => {
 
   return (
     <>
-      {/* Chatbot toggle button */}
       <button 
         onClick={toggleChatbot}
         className="fixed bottom-20 right-4 z-50 bg-paywise-blue text-white rounded-full p-3 shadow-lg hover:bg-paywise-darkBlue transition-colors duration-200"
@@ -307,7 +289,6 @@ const ChatBot = () => {
         <MessageCircle size={24} />
       </button>
       
-      {/* Chatbot interface */}
       {isOpen && (
         <div 
           className={cn(
@@ -315,7 +296,6 @@ const ChatBot = () => {
             isMinimized ? "h-14 bottom-20" : "bottom-28 h-[70vh] max-h-[500px]"
           )}
         >
-          {/* Header */}
           <div className="flex items-center justify-between p-3 bg-paywise-blue text-white rounded-t-lg">
             <div className="flex items-center gap-2">
               <MessageCircle size={18} />
@@ -343,7 +323,6 @@ const ChatBot = () => {
             </div>
           </div>
           
-          {/* Messages container */}
           {!isMinimized && (
             <>
               <div className="flex-grow overflow-y-auto p-4">
@@ -378,7 +357,6 @@ const ChatBot = () => {
                 <div ref={messagesEndRef} />
               </div>
               
-              {/* Suggested questions */}
               {messages.length <= 2 && (
                 <div className="px-4 py-2">
                   <p className="text-sm text-gray-500 mb-2">Suggested questions:</p>
@@ -396,7 +374,6 @@ const ChatBot = () => {
                 </div>
               )}
               
-              {/* Input area */}
               <form onSubmit={handleSubmit} className="border-t p-3 flex gap-2">
                 <Textarea
                   value={inputValue}
