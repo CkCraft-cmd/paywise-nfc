@@ -1,27 +1,21 @@
 
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, SendHorizontal, X, Minimize2, Maximize2 } from "lucide-react";
+import { MessageCircle, SendHorizontal, X, Minimize2, Maximize2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { fetchChatHistory, saveMessage, clearChatHistory, ChatMessage } from "@/services/chatService";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "bot";
-  timestamp: Date;
-}
-
-const initialMessages: Message[] = [
-  {
-    id: "welcome-msg",
-    text: "Hi there! I'm PayBot, your virtual assistant powered by AI. I can help with PayWise questions or anything else you'd like to know!",
-    sender: "bot",
-    timestamp: new Date(),
-  },
-];
+const initialWelcomeMessage: ChatMessage = {
+  id: "welcome-msg",
+  user_id: "system",
+  text: "Hi there! I'm PayBot, your virtual assistant powered by AI. I can help with PayWise questions or anything else you'd like to know!",
+  sender: "bot",
+  timestamp: new Date().toISOString(),
+};
 
 const suggestedQuestions = [
   "How do I add money to my account?",
@@ -33,12 +27,44 @@ const suggestedQuestions = [
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([initialWelcomeMessage]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [useTestMode, setUseTestMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Load chat history when component mounts and user is available
+  useEffect(() => {
+    if (user?.id) {
+      loadChatHistory();
+    }
+  }, [user?.id]);
+
+  const loadChatHistory = async () => {
+    if (!user?.id) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const history = await fetchChatHistory(user.id, useTestMode);
+      
+      if (history.length > 0) {
+        setMessages([initialWelcomeMessage, ...history]);
+      }
+    } catch (error) {
+      console.error("Failed to load chat history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history",
+        variant: "destructive",
+      });
+      setUseTestMode(true);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   const toggleChatbot = () => {
     setIsOpen(!isOpen);
@@ -65,16 +91,37 @@ const ChatBot = () => {
     setInputValue(e.target.value);
   };
 
+  const handleClearChat = async () => {
+    if (!user?.id) return;
+    
+    try {
+      await clearChatHistory(user.id, useTestMode);
+      setMessages([initialWelcomeMessage]);
+      toast({
+        title: "Chat Cleared",
+        description: "Your chat history has been cleared",
+      });
+    } catch (error) {
+      console.error("Failed to clear chat history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear chat history",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !user?.id) return;
     
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
+      user_id: user.id,
       text: inputValue.trim(),
       sender: "user",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
     
     setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -82,15 +129,22 @@ const ChatBot = () => {
     setIsTyping(true);
     
     try {
+      // Save user message to database
+      await saveMessage(userMessage, useTestMode);
+      
       // Send message to GPT API
       const response = await generateGPTResponse(userMessage.text);
       
-      const botMessage: Message = {
+      const botMessage: ChatMessage = {
         id: `bot-${Date.now()}`,
+        user_id: user.id,
         text: response,
         sender: "bot",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
+      
+      // Save bot response to database
+      await saveMessage(botMessage, useTestMode);
       
       setIsTyping(false);
       setMessages((prevMessages) => [...prevMessages, botMessage]);
@@ -99,12 +153,16 @@ const ChatBot = () => {
       setIsTyping(false);
       
       // Fallback response in case of API failure
-      const errorMessage: Message = {
+      const errorMessage: ChatMessage = {
         id: `bot-${Date.now()}`,
+        user_id: user.id,
         text: "I'm having trouble connecting right now. Let me try to help with what I know about PayWise.",
         sender: "bot",
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
       };
+      
+      // Save error message to database
+      await saveMessage(errorMessage, useTestMode);
       
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
       
@@ -137,8 +195,30 @@ const ChatBot = () => {
     }
     
     // For non-PayWise questions, use a simulated GPT response
-    // In a real implementation, this would call OpenAI's API
     try {
+      // Try connecting to Supabase for an AI response
+      // This would ideally be connected to a Supabase Edge Function that calls OpenAI
+      if (!useTestMode) {
+        try {
+          const { data, error } = await supabase.functions.invoke("chat-gpt", {
+            body: { 
+              message: userMessage,
+              userId: user?.id || "anonymous"
+            }
+          });
+          
+          if (error) throw error;
+          if (data && data.response) {
+            return data.response;
+          }
+          
+          throw new Error("Invalid response format");
+        } catch (error) {
+          console.warn("Edge function error, falling back to simulated response:", error);
+          setUseTestMode(true);
+        }
+      }
+      
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -190,13 +270,15 @@ const ChatBot = () => {
       botResponse = "I'm not sure I understand. Could you rephrase your question? You can also check out the FAQs in the Settings section for more information.";
     }
 
-    const newBotMessage: Message = {
+    const newBotMessage: ChatMessage = {
       id: `bot-fallback-${Date.now()}`,
+      user_id: user?.id || "anonymous",
       text: botResponse,
       sender: "bot",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
+    // Don't save fallback messages to database since we already have an error message
     setMessages((prevMessages) => [...prevMessages, newBotMessage]);
   };
 
@@ -211,6 +293,8 @@ const ChatBot = () => {
       handleSubmit();
     }
   };
+
+  if (!user) return null;
 
   return (
     <>
@@ -238,6 +322,18 @@ const ChatBot = () => {
               <h3 className="font-medium">PayWise AI Assistant</h3>
             </div>
             <div className="flex items-center gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button onClick={handleClearChat} className="p-1 hover:bg-paywise-darkBlue rounded">
+                      <Trash2 size={16} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Clear chat history</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <button onClick={toggleMinimize} className="p-1 hover:bg-paywise-darkBlue rounded">
                 {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
               </button>
@@ -251,6 +347,11 @@ const ChatBot = () => {
           {!isMinimized && (
             <>
               <div className="flex-grow overflow-y-auto p-4">
+                {isLoadingHistory && messages.length <= 1 && (
+                  <div className="flex justify-center my-4">
+                    <div className="animate-spin h-6 w-6 border-2 border-paywise-blue border-t-transparent rounded-full"></div>
+                  </div>
+                )}
                 {messages.map((msg) => (
                   <div 
                     key={msg.id}
@@ -263,7 +364,7 @@ const ChatBot = () => {
                   >
                     <p>{msg.text}</p>
                     <span className="text-xs text-gray-500 mt-1 block">
-                      {msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                     </span>
                   </div>
                 ))}
