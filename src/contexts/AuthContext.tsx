@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Profile } from '@/types/database.types';
@@ -12,7 +11,8 @@ type AuthContextType = {
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateBalance: (newBalance: number) => Promise<void>;
-  isTestMode: boolean; // Add flag for test mode
+  updateProfile: (data: Partial<User>) => Promise<void>;
+  isTestMode: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -120,6 +120,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isTestMode) {
         setProfile(mockProfile);
       }
+    }
+  };
+
+  const updateProfile = async (data: Partial<User>) => {
+    try {
+      if (!user) return;
+      
+      if (isTestMode) {
+        // Just update the local state for test mode
+        setUser({ ...user, ...data });
+        toast.success('Profile updated successfully');
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        data: data
+      });
+
+      if (error) throw error;
+      
+      setUser({ ...user, ...data });
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Error updating profile');
+      throw error;
     }
   };
 
@@ -268,6 +293,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       signUp,
       signOut,
       updateBalance,
+      updateProfile,
       isTestMode
     }}>
       {children}
