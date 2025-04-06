@@ -1,7 +1,9 @@
 
 import { useState } from "react";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface PaymentFormProps {
   amount: number;
@@ -14,12 +16,21 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
   const [password, setPassword] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const { profile } = useAuth();
+  const { theme } = useTheme();
+  
+  const isLowBalance = profile && profile.balance < amount;
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password.length < 4) {
       toast.error("Password must be at least 4 characters");
+      return;
+    }
+
+    if (isLowBalance) {
+      toast.error("Insufficient balance to complete this payment");
       return;
     }
     
@@ -50,6 +61,17 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
       </div>
     );
   }
+
+  const getWarningStyles = () => {
+    switch (theme) {
+      case "night":
+        return "bg-red-900/20 text-red-400 border-red-800";
+      case "fun":
+        return "bg-red-50 text-red-600 border-red-200";
+      default:
+        return "bg-red-50 text-red-600 border-red-200";
+    }
+  };
   
   return (
     <div className="p-4">
@@ -65,6 +87,15 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
           <span>{merchant}</span>
         </div>
       </div>
+      
+      {isLowBalance && (
+        <div className={`p-3 mb-4 rounded-lg border flex items-center ${getWarningStyles()}`}>
+          <AlertTriangle size={16} className="mr-2 flex-shrink-0" />
+          <span className="text-sm">
+            Your balance (₹{profile?.balance.toLocaleString('en-IN')}) is insufficient for this payment
+          </span>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         <div className="mb-6">
@@ -103,7 +134,7 @@ const PaymentForm = ({ amount, merchant, onCancel, onSuccess }: PaymentFormProps
           <button
             type="submit"
             disabled={isProcessing}
-            className="flex-1 bg-paywise-blue text-white py-2.5 rounded-lg font-medium"
+            className={`flex-1 ${isLowBalance ? 'bg-gray-400' : 'bg-paywise-blue'} text-white py-2.5 rounded-lg font-medium`}
           >
             {isProcessing ? (
               <span className="flex items-center justify-center">

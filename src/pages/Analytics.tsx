@@ -7,11 +7,14 @@ import InsightCard from "@/components/InsightCard";
 import SpendingChart from "@/components/SpendingChart";
 import TransactionItem, { Transaction } from "@/components/TransactionItem";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Analytics = () => {
-  const { user } = useAuth();
+  const { user, isTestMode } = useAuth();
+  const { theme } = useTheme();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   // Sample data for spending charts - in a real app these would be calculated from transactions
   const weeklyData = [
@@ -45,6 +48,20 @@ const Analytics = () => {
     { name: "Nov", value: 450 },
     { name: "Dec", value: 550 },
   ];
+  
+  // This effect will trigger when a new payment is made
+  useEffect(() => {
+    // Listen for the custom event from payment success
+    const handlePaymentSuccess = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('payment-completed', handlePaymentSuccess);
+    
+    return () => {
+      window.removeEventListener('payment-completed', handlePaymentSuccess);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +69,7 @@ const Analytics = () => {
     const loadTransactions = async () => {
       try {
         setIsLoading(true);
-        const fetchedTransactions = await fetchTransactions(user.id);
+        const fetchedTransactions = await fetchTransactions(user.id, isTestMode);
         
         // Convert timestamp strings to Date objects for proper formatting
         const formattedTransactions = fetchedTransactions.map(tx => ({
@@ -70,7 +87,7 @@ const Analytics = () => {
     };
     
     loadTransactions();
-  }, [user]);
+  }, [user, refreshKey, isTestMode]);
 
   const handleViewTransaction = (id: string) => {
     toast.info(`Viewing transaction ${id}`);
@@ -86,6 +103,17 @@ const Analytics = () => {
   const diningPercentage = transactions.length > 0 
     ? (diningTransactions.length / transactions.length) * 100 
     : 0;
+    
+  const getCardStyles = () => {
+    switch (theme) {
+      case "night":
+        return "bg-gray-800 border-gray-700";
+      case "fun":
+        return "bg-white border-purple-200 shadow-purple-100";
+      default:
+        return "bg-white border-gray-100";
+    }
+  };
 
   return (
     <PageLayout>
@@ -133,7 +161,7 @@ const Analytics = () => {
         
         <div className="mb-6">
           <h2 className="font-semibold mb-3">Transaction History</h2>
-          <div className="bg-white rounded-xl overflow-hidden shadow-sm">
+          <div className={`rounded-xl overflow-hidden shadow-sm ${getCardStyles()}`}>
             {isLoading ? (
               <div className="p-6 flex justify-center">
                 <div className="animate-spin h-6 w-6 border-2 border-paywise-blue border-t-transparent rounded-full"></div>

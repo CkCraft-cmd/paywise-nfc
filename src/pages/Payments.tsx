@@ -7,13 +7,14 @@ import { addTransaction } from "@/services/transactionService";
 import PageLayout from "@/components/PageLayout";
 import NFCScanner from "@/components/NFCScanner";
 import PaymentForm from "@/components/PaymentForm";
-import { ArrowLeft, Moon, Sun, Zap } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Payments = () => {
   const navigate = useNavigate();
-  const { user, profile, updateBalance } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { user, profile, updateBalance, isTestMode } = useAuth();
+  const { theme } = useTheme();
   const [scanComplete, setScanComplete] = useState(false);
   const [cardId, setCardId] = useState("");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -89,9 +90,12 @@ const Payments = () => {
         category: "dining",
         timestamp: new Date().toISOString(),
         status: "completed"
-      });
+      }, isTestMode);
       
       toast.success("Payment processed successfully!");
+      
+      // 3. Dispatch an event so Analytics page can refresh data
+      window.dispatchEvent(new Event('payment-completed'));
       
       // Navigate back to home after successful payment
       setTimeout(() => {
@@ -107,12 +111,6 @@ const Payments = () => {
     setScanComplete(false);
     setCardId("");
     setShowPaymentForm(false);
-  };
-
-  const toggleTheme = () => {
-    if (theme === "light") setTheme("night");
-    else if (theme === "night") setTheme("fun");
-    else setTheme("light");
   };
 
   // Get theme-specific styles
@@ -158,20 +156,7 @@ const Payments = () => {
             <h1 className={`text-xl font-bold ${styles.text}`}>NFC Payment</h1>
           </div>
           
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-full ${
-              theme === "night" 
-                ? "bg-gray-800 text-blue-400" 
-                : theme === "fun"
-                  ? "bg-purple-100 text-purple-600"
-                  : "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {theme === "light" && <Moon size={20} />}
-            {theme === "night" && <Zap size={20} />}
-            {theme === "fun" && <Sun size={20} />}
-          </button>
+          <ThemeToggle />
         </div>
         
         <div className={`rounded-xl overflow-hidden shadow-sm ${styles.card}`}>
